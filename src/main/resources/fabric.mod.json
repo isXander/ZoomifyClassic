@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "zoomify-classic",
+  "version": "${version}",
+  "name": "Zoomify Classic",
+  "description": "Zoomify on Minecraft Classic",
+  "authors": [
+    "isXander"
+  ],
+  "icon": "zoomify-classic.png",
+  "contact": {
+    "homepage": "https://isxander.dev",
+    "issues": "https://github.com/isXander/Zoomify/issues",
+    "sources": "https://github.com/isXander/Zoomify"
+  },
+  "license": "ARR",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      {
+        "adapter": "kotlin",
+        "value": "dev.isxander.zoomify.Zoomify"
+      }
+    ]
+  },
+  "mixins": [
+    "zoomify.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.14.0",
+    "fabric-language-kotlin": ">=1.8.2+kotlin.1.7.10",
+    "minecraft": "0.30",
+    "java": ">=17"
+  }
+}

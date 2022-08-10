@@ -1,0 +1,183 @@
+plugins {
+    id "java"
+    id "org.jetbrains.kotlin.jvm" version "1.7.10"
+    id "org.jetbrains.kotlin.plugin.serialization" version "1.7.10"
+
+    id "fabric-loom" version "0.13.+"
+    id "io.github.juuxel.loom-quiltflower" version "1.7.+"
+
+    id "com.modrinth.minotaur" version "2.4.+"
+    id "com.github.breadmoirai.github-release" version "2.4.+"
+    id "maven-publish"
+
+    id "io.github.p03w.machete" version "1.1.+"
+}
+
+group = "dev.isxander"
+version = "0.1"
+
+repositories {
+    mavenCentral()
+    maven { url = "https://maven.isxander.dev/releases" }
+    maven { url ="https://jitpack.io" }
+
+    exclusiveContent {
+        forRepository {
+            ivy {
+                url = "https://github.com/AntiquityMC/PotentialLamp/archive/refs/tags"
+                patternLayout {
+                    artifact "[revision].zip"
+                }
+                metadataSources {
+                    artifact()
+                }
+            }
+        }
+
+        filter {
+            includeModule "io.github.antiquitymc", "PotentialLamp"
+        }
+    }
+}
+
+import net.fabricmc.loom.api.mappings.intermediate.IntermediateMappingsProvider
+import net.fabricmc.mappingio.MappingReader
+import net.fabricmc.mappingio.format.Tiny2Writer
+import java.nio.file.Files
+import java.nio.file.Path
+
+abstract class PlIntermediaryProvider extends IntermediateMappingsProvider {
+    @Override
+    void provide(Path tinyMappings) throws IOException {
+//        if (Files.exists(tinyMappings)) {
+//            return
+//        }
+
+        def tmp = Files.createTempFile('potentiallamp-v1-', '.tiny')
+        Files.delete(tmp) // we don't need it lol
+        def url = "https://raw.githubusercontent.com/AntiquityMC/PotentialLamp/master/intermediary/c0.30_01c.tiny"
+        downloader.get().apply(url).downloadPath(tmp)
+        tinyMappings.withWriter {
+            def visitor = new Tiny2Writer(it, false)
+            MappingReader.read(tmp, visitor)
+        }
+    }
+
+    @Override
+    String getName() {
+        return "PotentialLamp"
+    }
+}
+
+loom {
+    clientOnlyMinecraftJar()
+    setIntermediateMappingsProvider(PlIntermediaryProvider) {}
+    runs {
+        client {
+            property "fabric.gameVersion", "0.30"
+        }
+    }
+}
+
+configurations {
+    runtimeClasspath {
+        exclude 'group': 'org.ow2.asm', 'module': 'asm-debug-all'
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:$minecraftVersion"
+    mappings loom.layered {
+        mappings("io.github.antiquitymc:PotentialLamp:$mappingsVersion") {
+            enigmaMappings()
+            mappingPath "PotentialLamp-$mappingsVersion/mappings"
+        }
+    }
+
+    modImplementation "net.fabricmc:fabric-loader:$loaderVersion"
+    modImplementation "net.fabricmc:fabric-language-kotlin:$fabricKotlinVersion+kotlin.1.7.10"
+
+    include implementation("dev.isxander.settxi:settxi-core:$settxiVersion")
+    include implementation("dev.isxander.settxi:settxi-kotlinx-serialization:$settxiVersion")
+
+//
+//    implementation("com.github.llamalad7:mixinextras:0.0.+")
+//    annotationProcessor("com.github.llamalad7:mixinextras:0.0.+")
+//    include("com.github.llamalad7:mixinextras:0.0.+")
+}
+
+java {
+    withSourcesJar()
+}
+
+tasks.withType(JavaCompile) {
+    options.release.set(17)
+}
+
+
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile) {
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+}
+
+processResources {
+    inputs.property "version", project.version
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
+}
+
+def changelogText = file("changelogs/${project.version}.md").text ?: "No changelog provided"
+
+if (!project.modrinthId.isEmpty()) {
+    modrinth {
+        token = findProperty("modrinth.token")
+        projectId = project.modrinthId
+        versionNumber = project.version
+        versionType = "release"
+        uploadFile = tasks.remapJar
+        gameVersions = [project.minecraftVersion]
+        loaders = ["fabric"]
+        dependencies {
+            required.project("fabric-language-kotlin")
+        }
+    }
+}
+
+if (!project.githubId.isEmpty()) {
+    githubRelease {
+        token(findProperty("github.token")?.toString())
+
+        def split = project.githubId.split("/")
+        owner(split[0])
+        repo(split[1])
+        tagName("${project.version}")
+        targetCommitish("1.19")
+        body(changelogText)
+        releaseAssets(tasks.remapJar.outputs.files)
+    }
+}
+
+publishing {
+    publications {
+        zoomify(MavenPublication) {
+            groupId = "dev.isxander"
+            artifactId = "zoomify"
+
+            from(components.java)
+        }
+    }
+
+    repositories {
+        if (hasProperty("xander-repo.username") && hasProperty("xander-repo.password")) {
+            maven {
+                url = "https://maven.isxander.dev/releases"
+                credentials {
+                    username = findProperty("xander-repo.username")
+                    password = findProperty("xander-repo.password")
+                }
+            }
+        } else println "Cannot publish to https://maven.isxander.dev"
+    }
+}
