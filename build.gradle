@@ -14,64 +14,17 @@ plugins {
 }
 
 group = "dev.isxander"
-version = "0.1"
+version = "0.2"
 
 repositories {
     mavenCentral()
     maven { url = "https://maven.isxander.dev/releases" }
     maven { url ="https://jitpack.io" }
-
-    exclusiveContent {
-        forRepository {
-            ivy {
-                url = "https://github.com/AntiquityMC/PotentialLamp/archive/refs/tags"
-                patternLayout {
-                    artifact "[revision].zip"
-                }
-                metadataSources {
-                    artifact()
-                }
-            }
-        }
-
-        filter {
-            includeModule "io.github.antiquitymc", "PotentialLamp"
-        }
-    }
-}
-
-import net.fabricmc.loom.api.mappings.intermediate.IntermediateMappingsProvider
-import net.fabricmc.mappingio.MappingReader
-import net.fabricmc.mappingio.format.Tiny2Writer
-import java.nio.file.Files
-import java.nio.file.Path
-
-abstract class PlIntermediaryProvider extends IntermediateMappingsProvider {
-    @Override
-    void provide(Path tinyMappings) throws IOException {
-//        if (Files.exists(tinyMappings)) {
-//            return
-//        }
-
-        def tmp = Files.createTempFile('potentiallamp-v1-', '.tiny')
-        Files.delete(tmp) // we don't need it lol
-        def url = "https://raw.githubusercontent.com/AntiquityMC/PotentialLamp/master/intermediary/c0.30_01c.tiny"
-        downloader.get().apply(url).downloadPath(tmp)
-        tinyMappings.withWriter {
-            def visitor = new Tiny2Writer(it, false)
-            MappingReader.read(tmp, visitor)
-        }
-    }
-
-    @Override
-    String getName() {
-        return "PotentialLamp"
-    }
 }
 
 loom {
     clientOnlyMinecraftJar()
-    setIntermediateMappingsProvider(PlIntermediaryProvider) {}
+    noIntermediateMappings()
     runs {
         client {
             property "fabric.gameVersion", "0.30"
@@ -88,10 +41,7 @@ configurations {
 dependencies {
     minecraft "com.mojang:minecraft:$minecraftVersion"
     mappings loom.layered {
-        mappings("io.github.antiquitymc:PotentialLamp:$mappingsVersion") {
-            enigmaMappings()
-            mappingPath "PotentialLamp-$mappingsVersion/mappings"
-        }
+        it.mappings("https://github.com/AntiquityMC/PotentialLamp/releases/download/$mappingsVersion/obfToNamed.jar")
     }
 
     modImplementation "net.fabricmc:fabric-loader:$loaderVersion"
@@ -108,6 +58,12 @@ dependencies {
 
 java {
     withSourcesJar()
+}
+
+import net.fabricmc.loom.task.AbstractRemapJarTask
+
+tasks.withType(AbstractRemapJarTask) {
+    targetNamespace = 'official'
 }
 
 tasks.withType(JavaCompile) {

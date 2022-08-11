@@ -35,7 +35,7 @@ public class MinecraftMixin {
         return (float) (prevFov / Zoomify.INSTANCE.getFovDivisor(timer.a));
     }
 
-    @Inject(method = "tick", at = @At(value = "INVOKE", target = "Lcom/mojang/minecraft/player/Player;method_164(IZ)V"))
+    @Inject(method = "tick", at = @At(value = "INVOKE", target = "Lcom/mojang/minecraft/player/Player;setKey(IZ)V"))
     private void onKey(CallbackInfo ci) {
         Zoomify.INSTANCE.onKeyEvent((Minecraft) (Object) this);
     }

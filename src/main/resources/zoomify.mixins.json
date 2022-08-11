@@ -10,7 +10,6 @@
     "MinecraftMixin",
     "OptionsMixin",
     "OptionsScreenMixin",
-    "ScreenAccessor",
-    "TimerAccessor"
+    "ScreenAccessor"
   ]
 }
